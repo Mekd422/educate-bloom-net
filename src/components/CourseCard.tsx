@@ -1,26 +1,42 @@
+import { useState } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Users, Star, Play } from "lucide-react";
+import { Clock, Users, Star, Play, BookOpen } from "lucide-react";
+import { Course } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { useEnrollments } from "@/hooks/useEnrollments";
 
 interface CourseCardProps {
-  course: {
-    id: string;
-    title: string;
-    description: string;
-    instructor: string;
-    thumbnail: string;
-    price: number;
-    duration: string;
-    students: number;
-    rating: number;
-    level: "Beginner" | "Intermediate" | "Advanced";
-    category: string;
-  };
-  onEnroll: (courseId: string) => void;
+  course: Course;
+  onEnroll?: (courseId: string) => void;
 }
 
 const CourseCard = ({ course, onEnroll }: CourseCardProps) => {
+  const { user } = useAuth();
+  const { enrollInCourse, isEnrolled } = useEnrollments();
+  const [loading, setLoading] = useState(false);
+
+  const handleEnroll = async () => {
+    if (!user) {
+      onEnroll?.(course.id);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await enrollInCourse(course.id);
+    } catch (error) {
+      // Error handled in hook
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enrolled = isEnrolled(course.id);
+  const buttonText = enrolled ? "Enrolled" : user ? "Enroll Now" : "Sign in to Enroll";
+  const buttonDisabled = enrolled || loading;
+
   const getLevelColor = (level: string) => {
     switch (level) {
       case "Beginner":
@@ -61,14 +77,10 @@ const CourseCard = ({ course, onEnroll }: CourseCardProps) => {
           {course.description}
         </p>
         <p className="text-sm font-medium text-primary mb-4">
-          by {course.instructor}
+          by {course.instructor?.name || 'Instructor'}
         </p>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-          <div className="flex items-center space-x-1">
-            <Clock className="h-4 w-4" />
-            <span>{course.duration}</span>
-          </div>
           <div className="flex items-center space-x-1">
             <Users className="h-4 w-4" />
             <span>{course.students}</span>
@@ -85,10 +97,22 @@ const CourseCard = ({ course, onEnroll }: CourseCardProps) => {
           ${course.price}
         </div>
         <Button 
-          onClick={() => onEnroll(course.id)}
+          onClick={handleEnroll}
+          disabled={buttonDisabled}
           className="bg-gradient-primary hover:opacity-90 transition-opacity"
+          variant={enrolled ? "secondary" : "default"}
         >
-          Enroll Now
+          {loading ? (
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Enrolling...</span>
+            </div>
+          ) : (
+            <>
+              {enrolled && <BookOpen className="w-4 h-4 mr-2" />}
+              {buttonText}
+            </>
+          )}
         </Button>
       </CardFooter>
     </Card>

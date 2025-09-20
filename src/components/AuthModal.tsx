@@ -5,7 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -14,12 +16,46 @@ interface AuthModalProps {
 
 const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   const [activeTab, setActiveTab] = useState("login");
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    name: "",
+    role: "student" as "student" | "instructor"
+  });
+
+  const { signIn, signUp } = useAuth();
 
   if (!isOpen) return null;
 
-  const handleSupabaseInfo = () => {
-    // This will be replaced with actual Supabase authentication
-    console.log("Supabase integration needed for authentication");
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await signIn(formData.email, formData.password);
+      onClose();
+    } catch (error) {
+      // Error handled in useAuth
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await signUp(formData.email, formData.password, formData.name, formData.role);
+      onClose();
+    } catch (error) {
+      // Error handled in useAuth
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -44,15 +80,6 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         </CardHeader>
 
         <CardContent>
-          <div className="mb-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">⚡ Backend Required</span>
-              <Badge variant="secondary" className="text-xs">Supabase</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Connect to Supabase to enable user authentication, course enrollment, and progress tracking.
-            </p>
-          </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
@@ -61,79 +88,98 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
             </TabsList>
 
             <TabsContent value="login" className="space-y-4 mt-6">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  disabled
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  disabled
-                />
-              </div>
-              <Button 
-                className="w-full bg-gradient-primary" 
-                disabled
-                onClick={handleSupabaseInfo}
-              >
-                Sign In (Requires Supabase)
-              </Button>
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Password</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    required
+                  />
+                </div>
+                <Button 
+                  type="submit"
+                  className="w-full bg-gradient-primary" 
+                  disabled={loading}
+                >
+                  {loading ? "Signing In..." : "Sign In"}
+                </Button>
+              </form>
             </TabsContent>
 
             <TabsContent value="register" className="space-y-4 mt-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Enter your name"
-                  disabled
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email-signup">Email</Label>
-                <Input
-                  id="email-signup"
-                  type="email"
-                  placeholder="Enter your email"
-                  disabled
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password-signup">Password</Label>
-                <Input
-                  id="password-signup"
-                  type="password"
-                  placeholder="Create a password"
-                  disabled
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>I want to join as:</Label>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm" disabled>
-                    Student
-                  </Button>
-                  <Button variant="outline" size="sm" disabled>
-                    Instructor
-                  </Button>
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-name">Full Name</Label>
+                  <Input
+                    id="register-name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    required
+                  />
                 </div>
-              </div>
-              <Button 
-                className="w-full bg-gradient-primary" 
-                disabled
-                onClick={handleSupabaseInfo}
-              >
-                Create Account (Requires Supabase)
-              </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="register-email">Email</Label>
+                  <Input
+                    id="register-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Password</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    placeholder="Create a password (min 6 characters)"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select 
+                    value={formData.role} 
+                    onValueChange={(value: "student" | "instructor") => handleInputChange("role", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="instructor">Instructor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  type="submit"
+                  className="w-full bg-gradient-primary" 
+                  disabled={loading}
+                >
+                  {loading ? "Creating Account..." : "Create Account"}
+                </Button>
+              </form>
             </TabsContent>
           </Tabs>
         </CardContent>

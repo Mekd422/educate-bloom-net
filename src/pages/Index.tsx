@@ -1,79 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Navigation from "@/components/Navigation";
 import CourseCard from "@/components/CourseCard";
 import AuthModal from "@/components/AuthModal";
+import { useCourses } from "@/hooks/useCourses";
+import { useAuth } from "@/hooks/useAuth";
 import heroImage from "@/assets/hero-learning.jpg";
-import webDevImage from "@/assets/course-web-dev.jpg";
-import dataScienceImage from "@/assets/course-data-science.jpg";
-import marketingImage from "@/assets/course-marketing.jpg";
-import mobileDevImage from "@/assets/course-mobile-dev.jpg";
-import { Search, BookOpen, Users, Award, Zap } from "lucide-react";
+import { Search, BookOpen, Users, Award, Zap, Plus, Settings, BarChart3 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  // Mock course data
-  const courses = [
-    {
-      id: "1",
-      title: "Complete Web Development Bootcamp",
-      description: "Learn HTML, CSS, JavaScript, React, and Node.js from scratch. Build real-world projects and deploy them to the web.",
-      instructor: "Sarah Johnson",
-      thumbnail: webDevImage,
-      price: 89,
-      duration: "45 hours",
-      students: 12453,
-      rating: 4.8,
-      level: "Beginner" as const,
-      category: "Web Development"
-    },
-    {
-      id: "2",
-      title: "Data Science with Python",
-      description: "Master data analysis, machine learning, and data visualization using Python, pandas, and scikit-learn.",
-      instructor: "Dr. Michael Chen",
-      thumbnail: dataScienceImage,
-      price: 129,
-      duration: "60 hours",
-      students: 8932,
-      rating: 4.9,
-      level: "Intermediate" as const,
-      category: "Data Science"
-    },
-    {
-      id: "3",
-      title: "Digital Marketing Mastery",
-      description: "Learn SEO, social media marketing, Google Ads, and analytics to grow your business online.",
-      instructor: "Emma Rodriguez",
-      thumbnail: marketingImage,
-      price: 79,
-      duration: "35 hours",
-      students: 15678,
-      rating: 4.7,
-      level: "Beginner" as const,
-      category: "Marketing"
-    },
-    {
-      id: "4",
-      title: "Mobile App Development with React Native",
-      description: "Build cross-platform mobile apps for iOS and Android using React Native and modern JavaScript.",
-      instructor: "Alex Thompson",
-      thumbnail: mobileDevImage,
-      price: 109,
-      duration: "50 hours",
-      students: 6234,
-      rating: 4.6,
-      level: "Advanced" as const,
-      category: "Mobile Development"
-    }
-  ];
+  const { courses, loading } = useCourses();
+  const { user } = useAuth();
 
   const handleEnroll = (courseId: string) => {
-    console.log("Enrollment requires Supabase integration for course:", courseId);
-    setIsAuthModalOpen(true);
+    if (!user) {
+      setIsAuthModalOpen(true);
+    }
+    // Enrollment is handled in CourseCard component
   };
 
   return (
@@ -108,12 +55,37 @@ const Index = () => {
                   className="bg-gradient-primary hover:opacity-90 shadow-elegant"
                   onClick={() => setIsAuthModalOpen(true)}
                 >
-                  Start Learning Today
+                  {user ? "Continue Learning" : "Start Learning Today"}
                 </Button>
                 <Button size="lg" variant="outline">
                   Browse Courses
                 </Button>
               </div>
+
+              {user && user.role === 'instructor' && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">Instructor Dashboard</h3>
+                      <p className="text-sm text-muted-foreground">Manage your courses and track student progress</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button asChild size="sm">
+                        <Link to="/instructor/dashboard">
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          Dashboard
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/instructor/create-course">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Course
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center space-x-8 text-sm text-muted-foreground">
                 <div className="flex items-center space-x-2">
@@ -181,13 +153,45 @@ const Index = () => {
           </div>
 
           <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
-            {courses.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                onEnroll={handleEnroll}
-              />
-            ))}
+            {loading ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-muted rounded-lg h-64 mb-4" />
+                  <div className="space-y-2">
+                    <div className="bg-muted rounded h-4 w-3/4" />
+                    <div className="bg-muted rounded h-4 w-1/2" />
+                  </div>
+                </div>
+              ))
+            ) : courses.length > 0 ? (
+              courses.slice(0, 4).map((course) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  onEnroll={handleEnroll}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No courses available</h3>
+                <p className="text-muted-foreground mb-4">
+                  {user?.role === 'instructor' 
+                    ? "Create your first course to get started!" 
+                    : "Check back soon for new courses!"
+                  }
+                </p>
+                {user?.role === 'instructor' && (
+                  <Button asChild>
+                    <Link to="/instructor/create-course">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Course
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="text-center mt-12">
